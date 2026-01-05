@@ -805,6 +805,19 @@ int main() {
 
                 glm::mat4 lightViewMatrix = glm::lookAt(center - lightDir * radius, center, glm::vec3(0.0f, 1.0f, 0.0f));
                 glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, 2.0f * radius);
+
+                // Stable CSM: Snap to texel size
+                glm::mat4 shadowMatrix = lightOrthoMatrix * lightViewMatrix;
+                glm::vec4 shadowOrigin = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+                shadowOrigin = shadowMatrix * shadowOrigin;
+                shadowOrigin *= (float)shadowMapSize / 2.0f;
+
+                glm::vec2 roundedOrigin = glm::round(glm::vec2(shadowOrigin));
+                glm::vec2 roundOffset = (roundedOrigin - glm::vec2(shadowOrigin)) * 2.0f / (float)shadowMapSize;
+
+                lightOrthoMatrix[3][0] += roundOffset.x;
+                lightOrthoMatrix[3][1] += roundOffset.y;
+
                 lightOrthoMatrix[1][1] *= -1;
 
                 sd.cascadeViewProj[i] = lightOrthoMatrix * lightViewMatrix;
@@ -893,7 +906,7 @@ int main() {
                                     uint32_t materialBufferIndex;
                                     uint32_t cascadeIndex;
                                 } spc;
-                                spc.model = glm::scale(glm::mat4(1.0f), glm::vec3(0.01f));
+                                spc.model = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
                                 spc.sceneDataIndex = sceneManager.getSceneBufferIndex();
                                 spc.materialIndex = 0;
                                 spc.materialBufferIndex = 0;

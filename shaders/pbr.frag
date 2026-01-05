@@ -127,7 +127,7 @@ vec3 getNormalFromMap() {
         return normalize(inNormal);
     }
 
-    vec3 tangentNormal = texture(textures[nonuniformEXT(mat.normalTextureIndex)], inUV).xyz * 2.0 - 1.0;
+    vec3 tangentNormal = textureLod(textures[nonuniformEXT(mat.normalTextureIndex)], inUV, 0.0).xyz * 2.0 - 1.0;
 
     vec3 N = normalize(inNormal);
     vec3 T = normalize(inTangent.xyz);
@@ -195,13 +195,13 @@ void main() {
     
     vec3 baseColor = mat.baseColorFactor.rgb;
     if (mat.baseColorTextureIndex != -1) {
-        baseColor *= texture(textures[nonuniformEXT(mat.baseColorTextureIndex)], inUV).rgb;
+        baseColor *= textureLod(textures[nonuniformEXT(mat.baseColorTextureIndex)], inUV, 0.0).rgb;
     }
     
     float metallic = mat.metallicFactor;
     float roughness = mat.roughnessFactor;
     if (mat.metallicRoughnessTextureIndex != -1) {
-        vec4 mrSample = texture(textures[nonuniformEXT(mat.metallicRoughnessTextureIndex)], inUV);
+        vec4 mrSample = textureLod(textures[nonuniformEXT(mat.metallicRoughnessTextureIndex)], inUV, 0.0);
         metallic *= mrSample.b;
         roughness *= mrSample.g;
     }
@@ -299,12 +299,12 @@ void main() {
     }
 
     if (mat.occlusionTextureIndex != -1) {
-        ambient *= texture(textures[nonuniformEXT(mat.occlusionTextureIndex)], inUV).r;
+        ambient *= textureLod(textures[nonuniformEXT(mat.occlusionTextureIndex)], inUV, 0.0).r;
     }
     
     vec3 emissive = vec3(0.0);
     if (mat.emissiveTextureIndex != -1) {
-        emissive = texture(textures[nonuniformEXT(mat.emissiveTextureIndex)], inUV).rgb;
+        emissive = textureLod(textures[nonuniformEXT(mat.emissiveTextureIndex)], inUV, 0.0).rgb;
     }
     
     // HDR and Tonemapping

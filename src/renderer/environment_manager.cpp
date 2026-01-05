@@ -128,6 +128,18 @@ void EnvironmentManager::convertEquirectToCube(const std::unique_ptr<Image>& equ
 
     vkCmdDispatch(cb, cubemapSize / 16, cubemapSize / 16, 6);
 
+    // Barrier for skybox generation
+    VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.image = m_skybox->getHandle();
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.layerCount = 6;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
     vkDestroyPipelineLayout(m_context->getDevice(), layout, nullptr);
 }
 
@@ -191,6 +203,18 @@ void EnvironmentManager::generateIrradiance() {
 
     vkCmdDispatch(cb, irradianceSize / 16, irradianceSize / 16, 6);
 
+    // Barrier for irradiance generation
+    VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.image = m_irradiance->getHandle();
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.layerCount = 6;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
     vkDestroyPipelineLayout(m_context->getDevice(), layout, nullptr);
 }
 
@@ -246,6 +270,9 @@ void EnvironmentManager::generatePrefiltered() {
     specs.layout = layout;
     ComputePipeline pipeline(m_context, specs);
 
+    ImmediateCommands cmd(m_context);
+    VkCommandBuffer cb = cmd.getBuffer();
+
     for (uint32_t i = 0; i < mipLevels; ++i) {
         uint32_t mipWidth = prefilteredSize >> i;
         uint32_t mipHeight = prefilteredSize >> i;
@@ -266,9 +293,6 @@ void EnvironmentManager::generatePrefiltered() {
         vkCreateImageView(m_context->getDevice(), &viewInfo, nullptr, &mipView);
         uint32_t mipOutputIdx = m_context->getDescriptorManager().registerStorageImage(mipView);
 
-        ImmediateCommands cmd(m_context);
-        VkCommandBuffer cb = cmd.getBuffer();
-
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.getHandle());
         VkDescriptorSet set = m_context->getDescriptorManager().getDescriptorSet();
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, nullptr);
@@ -288,6 +312,18 @@ void EnvironmentManager::generatePrefiltered() {
         // Note: In a production renderer, we would cleanup these views or reuse them.
         // For now we just let them leak as this is a one-time startup operation.
     }
+
+    // Barrier for prefiltered generation
+    VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.image = m_prefiltered->getHandle();
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.levelCount = mipLevels;
+    barrier.subresourceRange.layerCount = 6;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
     vkDestroyPipelineLayout(m_context->getDevice(), layout, nullptr);
 }
@@ -348,6 +384,18 @@ void EnvironmentManager::generateBrdfLut() {
     vkCmdPushConstants(cb, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &outputIdx);
 
     vkCmdDispatch(cb, lutSize / 16, lutSize / 16, 1);
+
+    // Barrier for BRDF LUT generation
+    VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.image = m_brdfLut->getHandle();
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.layerCount = 1;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
     vkDestroyPipelineLayout(m_context->getDevice(), layout, nullptr);
 }
