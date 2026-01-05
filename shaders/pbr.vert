@@ -13,6 +13,7 @@ layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUV;
 layout(location = 3) out vec4 outColor;
 layout(location = 4) out vec4 outTangent;
+layout(location = 5) out flat uint outMaterialIndex;
 
 struct SceneData {
     mat4 view;
@@ -22,6 +23,7 @@ struct SceneData {
     mat4 invProj;
     mat4 lightSpaceMatrix;
     mat4 cascadeViewProj[4];
+    vec4 frustumPlanes[6];
     vec4 cascadeSplits;
     vec4 cameraPos;
     int lightCount;
@@ -39,34 +41,46 @@ struct SceneData {
     int padding1;
 };
 
+struct MeshInstance {
+    mat4 transform;
+    vec3 sphereCenter;
+    float sphereRadius;
+    uint materialIndex;
+    uint padding[3];
+};
+
 // Bindless Set #0
 layout(std430, set = 0, binding = 1) readonly buffer SceneDataBuffer {
     SceneData scene;
 } allSceneBuffers[];
 
+layout(std430, set = 0, binding = 1) readonly buffer InstanceBuffer {
+    MeshInstance instances[];
+} allInstanceBuffers[];
+
 // Push Constants
 layout(push_constant) uniform PushConstants {
-    mat4 model;
     uint sceneDataIndex;
-    uint materialIndex;
+    uint instanceBufferIndex;
     uint materialBufferIndex;
     uint padding;
 } pc;
 
 void main() {
     SceneData scene = allSceneBuffers[pc.sceneDataIndex].scene;
+    MeshInstance instance = allInstanceBuffers[pc.instanceBufferIndex].instances[gl_InstanceIndex];
     
-    // glTF standard is right-handed, Y-up.
-    // We'll apply a rotation to make it face the camera if needed, but identity for now.
-    vec4 worldPos = pc.model * vec4(inPos, 1.0);
+    mat4 model = instance.transform;
+    vec4 worldPos = model * vec4(inPos, 1.0);
     outWorldPos = worldPos.xyz;
     
     // Normal matrix
-    mat3 normalMatrix = mat3(transpose(inverse(pc.model)));
+    mat3 normalMatrix = mat3(transpose(inverse(model)));
     outNormal = normalMatrix * inNormal;
     outTangent = vec4(normalMatrix * inTangent.xyz, inTangent.w);
     outUV = inUV;
     outColor = inColor;
+    outMaterialIndex = instance.materialIndex;
     
     gl_Position = scene.viewProj * worldPos;
 }

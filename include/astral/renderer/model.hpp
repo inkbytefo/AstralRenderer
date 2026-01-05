@@ -25,6 +25,8 @@ struct Primitive {
     uint32_t firstIndex;
     uint32_t indexCount;
     int32_t materialIndex; // SceneManager'daki material metadata buffer indeksi
+    glm::vec3 boundingCenter;
+    float boundingRadius;
 };
 
 struct Mesh {

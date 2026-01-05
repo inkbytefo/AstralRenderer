@@ -15,6 +15,7 @@ struct SceneData {
     mat4 invProj;
     mat4 lightSpaceMatrix;
     mat4 cascadeViewProj[4];
+    vec4 frustumPlanes[6];
     vec4 cascadeSplits;
     vec4 cameraPos;
     int lightCount;
@@ -32,27 +33,39 @@ struct SceneData {
     int padding1;
 };
 
+struct MeshInstance {
+    mat4 transform;
+    vec3 sphereCenter;
+    float sphereRadius;
+    uint materialIndex;
+    uint padding[3];
+};
+
 // Bindless Set #0
 layout(std430, set = 0, binding = 1) readonly buffer SceneDataBuffer {
     SceneData scene;
 } allSceneBuffers[];
 
+layout(std430, set = 0, binding = 1) readonly buffer InstanceBuffer {
+    MeshInstance instances[];
+} allInstanceBuffers[];
+
 // Push Constants
 layout(push_constant) uniform PushConstants {
-    mat4 model;
     uint sceneDataIndex;
-    uint materialIndex;
+    uint instanceBufferIndex;
     uint materialBufferIndex;
     uint cascadeIndex; 
 } pc;
 
 void main() {
     SceneData scene = allSceneBuffers[pc.sceneDataIndex].scene;
+    MeshInstance instance = allInstanceBuffers[pc.instanceBufferIndex].instances[gl_InstanceIndex];
     
     mat4 shadowMatrix = scene.lightSpaceMatrix;
     if (pc.cascadeIndex < 4) {
         shadowMatrix = scene.cascadeViewProj[pc.cascadeIndex];
     }
     
-    gl_Position = shadowMatrix * pc.model * vec4(inPos, 1.0);
+    gl_Position = shadowMatrix * instance.transform * vec4(inPos, 1.0);
 }

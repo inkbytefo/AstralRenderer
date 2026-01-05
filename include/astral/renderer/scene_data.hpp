@@ -21,6 +21,7 @@ struct SceneData {
     glm::mat4 invProj;
     glm::mat4 lightSpaceMatrix; // Primary shadow matrix
     glm::mat4 cascadeViewProj[4];
+    glm::vec4 frustumPlanes[6];
     glm::vec4 cascadeSplits;
     glm::vec4 cameraPos;
     int lightCount;

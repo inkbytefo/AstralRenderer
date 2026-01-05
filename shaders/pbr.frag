@@ -6,6 +6,7 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUV;
 layout(location = 3) in vec4 inColor;
 layout(location = 4) in vec4 inTangent;
+layout(location = 5) in flat uint inMaterialIndex;
 
 layout(location = 0) out vec4 outFragColor;
 layout(location = 1) out vec4 outViewNormal;
@@ -25,6 +26,7 @@ struct SceneData {
     mat4 invProj;
     mat4 lightSpaceMatrix;
     mat4 cascadeViewProj[4];
+    vec4 frustumPlanes[6];
     vec4 cascadeSplits;
     vec4 cameraPos;
     int lightCount;
@@ -73,9 +75,8 @@ layout(set = 0, binding = 3) readonly buffer LightBuffer {
 layout(set = 0, binding = 4) uniform sampler2DArray arrayTextures[];
 
 layout(push_constant) uniform PushConstants {
-    mat4 model;
     uint sceneDataIndex;
-    uint materialIndex;
+    uint instanceBufferIndex;
     uint materialBufferIndex;
     uint padding;
 } pc;
@@ -122,7 +123,7 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 }
 
 vec3 getNormalFromMap() {
-    Material mat = allMaterialBuffers[pc.materialBufferIndex].materials[pc.materialIndex];
+    Material mat = allMaterialBuffers[pc.materialBufferIndex].materials[inMaterialIndex];
     if (mat.normalTextureIndex == -1) {
         return normalize(inNormal);
     }
@@ -190,7 +191,7 @@ float calculateShadow(vec3 worldPos, vec3 normal, vec3 lightPos) {
 }
 
 void main() {
-    Material mat = allMaterialBuffers[pc.materialBufferIndex].materials[pc.materialIndex];
+    Material mat = allMaterialBuffers[pc.materialBufferIndex].materials[inMaterialIndex];
     SceneData scene = allSceneBuffers[pc.sceneDataIndex].scene;
     
     vec3 baseColor = mat.baseColorFactor.rgb;

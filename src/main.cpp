@@ -6,6 +6,7 @@
 #include "astral/astral.hpp"
 #include "astral/renderer/environment_manager.hpp"
 #include "astral/renderer/ui_manager.hpp"
+#include "astral/renderer/compute_pipeline.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <vulkan/vulkan.h>
 #include <fstream>
@@ -94,6 +95,7 @@ int main() {
 
         // Load Model
         auto model = loader.loadFromFile("assets/models/damaged_helmet/scene.gltf", &sceneManager);
+        
         if (!model) {
             spdlog::warn("Model not found at assets/models/damaged_helmet/scene.gltf, creating fallback...");
             // Fallback could be a simple cube or just empty
@@ -118,7 +120,7 @@ int main() {
         VkPushConstantRange pushConstantRange = {};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset = 0;
-        pushConstantRange.size = sizeof(glm::mat4) + (sizeof(uint32_t) * 4); // mat4 model + indices
+        pushConstantRange.size = sizeof(uint32_t) * 4; // sceneDataIndex + instanceBufferIndex + materialBufferIndex + padding/cascadeIndex
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -452,6 +454,29 @@ int main() {
         auto shadowPipeline = std::make_unique<astral::GraphicsPipeline>(&context, shadowPipelineSpecs);
         // -----------------------------
 
+        // --- GPU Culling Setup ---
+        auto cullShader = std::make_shared<astral::Shader>(&context, readFile("assets/shaders/cull.comp"), astral::ShaderStage::Compute, "CullShader");
+
+        VkPushConstantRange cullPushRange = {};
+        cullPushRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        cullPushRange.offset = 0;
+        cullPushRange.size = sizeof(uint32_t) * 4; // sceneDataIndex, instanceBufferIndex, indirectBufferIndex, instanceCount
+
+        VkPipelineLayoutCreateInfo cullLayoutInfo = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+        cullLayoutInfo.pushConstantRangeCount = 1;
+        cullLayoutInfo.pPushConstantRanges = &cullPushRange;
+        cullLayoutInfo.setLayoutCount = 1;
+        cullLayoutInfo.pSetLayouts = setLayouts;
+
+        VkPipelineLayout cullLayout;
+        vkCreatePipelineLayout(context.getDevice(), &cullLayoutInfo, nullptr, &cullLayout);
+
+        astral::ComputePipelineSpecs cullSpecs;
+        cullSpecs.computeShader = cullShader;
+        cullSpecs.layout = cullLayout;
+        auto cullPipeline = std::make_unique<astral::ComputePipeline>(&context, cullSpecs);
+        // -------------------------
+
         // Skybox Shaders
         auto skyboxVertShader = std::make_shared<astral::Shader>(&context, readFile("assets/shaders/skybox.vert"), astral::ShaderStage::Vertex, "SkyboxVert");
         auto skyboxFragShader = std::make_shared<astral::Shader>(&context, readFile("assets/shaders/skybox.frag"), astral::ShaderStage::Fragment, "SkyboxFrag");
@@ -729,6 +754,21 @@ int main() {
             sd.invView = glm::inverse(sd.view);
             sd.invProj = glm::inverse(sd.proj);
             sd.cameraPos = glm::vec4(camera.getPosition(), 1.0f);
+
+            // Frustum Planes Calculation
+            glm::mat4 vp = sd.viewProj;
+            for (int i = 0; i < 4; i++) sd.frustumPlanes[0][i] = vp[i][3] + vp[i][0]; // Left
+            for (int i = 0; i < 4; i++) sd.frustumPlanes[1][i] = vp[i][3] - vp[i][0]; // Right
+            for (int i = 0; i < 4; i++) sd.frustumPlanes[2][i] = vp[i][3] + vp[i][1]; // Bottom
+            for (int i = 0; i < 4; i++) sd.frustumPlanes[3][i] = vp[i][3] - vp[i][1]; // Top
+            for (int i = 0; i < 4; i++) sd.frustumPlanes[4][i] = vp[i][3] + vp[i][2]; // Near
+            for (int i = 0; i < 4; i++) sd.frustumPlanes[5][i] = vp[i][3] - vp[i][2]; // Far
+
+            // Normalize planes
+            for (int i = 0; i < 6; i++) {
+                float length = glm::length(glm::vec3(sd.frustumPlanes[i]));
+                sd.frustumPlanes[i] /= length;
+            }
             
             // Light Space Matrix for Shadow Mapping (using the first light)
             auto& lights = sceneManager.getLights();
@@ -837,6 +877,24 @@ int main() {
             sd.brdfLutIndex = envManager.getBrdfLutIndex();
             sd.shadowMapIndex = (int)shadowMapIndex;
             sceneManager.updateSceneData(sd);
+            
+            // Clear and re-add mesh instances for this frame
+            sceneManager.clearMeshInstances();
+            if (model) {
+                for (const auto& mesh : model->meshes) {
+                    for (const auto& primitive : mesh.primitives) {
+                        sceneManager.addMeshInstance(
+                            glm::mat4(1.0f), 
+                            primitive.materialIndex, 
+                            primitive.indexCount, 
+                            primitive.firstIndex, 
+                            0, // vertexOffset
+                            primitive.boundingCenter,
+                            primitive.boundingRadius
+                        );
+                    }
+                }
+            }
 
             sync.waitForFrame(currentFrame);
             
@@ -874,6 +932,43 @@ int main() {
 
             graph.addExternalResource("ShadowMap", shadowImage->getHandle(), shadowImage->getView(), shadowSpecs.format, shadowMapSize, shadowMapSize, VK_IMAGE_LAYOUT_UNDEFINED);
 
+            graph.addPass("CullingPass", {}, {}, [&](VkCommandBuffer cb) {
+                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, cullPipeline->getHandle());
+                
+                VkDescriptorSet globalSet = context.getDescriptorManager().getDescriptorSet();
+                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, cullLayout, 0, 1, &globalSet, 0, nullptr);
+
+                struct CullPushConstants {
+                    uint32_t sceneDataIndex;
+                    uint32_t instanceBufferIndex;
+                    uint32_t indirectBufferIndex;
+                    uint32_t instanceCount;
+                } cpc;
+
+                cpc.sceneDataIndex = sceneManager.getSceneBufferIndex();
+                cpc.instanceBufferIndex = sceneManager.getMeshInstanceBufferIndex();
+                cpc.indirectBufferIndex = sceneManager.getIndirectBufferIndex();
+                cpc.instanceCount = static_cast<uint32_t>(sceneManager.getMeshInstanceCount());
+
+                vkCmdPushConstants(cb, cullLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(CullPushConstants), &cpc);
+
+                uint32_t groupCount = (cpc.instanceCount + 63) / 64;
+                if (groupCount > 0) {
+                    vkCmdDispatch(cb, groupCount, 1, 1);
+                }
+
+                // Memory barrier to ensure indirect commands are ready for the graphics pipeline
+                VkBufferMemoryBarrier barrier = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+                barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+                barrier.buffer = sceneManager.getIndirectBuffer();
+                barrier.offset = 0;
+                barrier.size = VK_WHOLE_SIZE;
+
+                vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+            });
+
             for (uint32_t i = 0; i < 4; i++) {
                 std::string resName = "ShadowMap_" + std::to_string(i);
                 graph.addExternalResource(resName, shadowImage->getHandle(), shadowLayerViews[i], shadowSpecs.format, shadowMapSize, shadowMapSize, VK_IMAGE_LAYOUT_UNDEFINED);
@@ -897,25 +992,27 @@ int main() {
                         vkCmdBindVertexBuffers(cb, 0, 1, &vBuffer, offsets);
                         vkCmdBindIndexBuffer(cb, model->indexBuffer->getHandle(), 0, VK_INDEX_TYPE_UINT32);
 
-                        for (const auto& mesh : model->meshes) {
-                            for (const auto& primitive : mesh.primitives) {
-                                struct PushConstants {
-                                    glm::mat4 model;
-                                    uint32_t sceneDataIndex;
-                                    uint32_t materialIndex;
-                                    uint32_t materialBufferIndex;
-                                    uint32_t cascadeIndex;
-                                } spc;
-                                spc.model = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
-                                spc.sceneDataIndex = sceneManager.getSceneBufferIndex();
-                                spc.materialIndex = 0;
-                                spc.materialBufferIndex = 0;
-                                spc.cascadeIndex = i;
-                                
-                                vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &spc);
-                                vkCmdDrawIndexed(cb, primitive.indexCount, 1, primitive.firstIndex, 0, 0);
-                            }
-                        }
+                        struct PushConstants {
+                            uint32_t sceneDataIndex;
+                            uint32_t instanceBufferIndex;
+                            uint32_t materialBufferIndex;
+                            uint32_t cascadeIndex; 
+                        } spc;
+                        
+                        spc.sceneDataIndex = sceneManager.getSceneBufferIndex();
+                        spc.instanceBufferIndex = sceneManager.getMeshInstanceBufferIndex();
+                        spc.materialBufferIndex = sceneManager.getMaterialBufferIndex();
+                        spc.cascadeIndex = i;
+                        
+                        vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &spc);
+                        
+                        vkCmdDrawIndexedIndirect(
+                            cb, 
+                            sceneManager.getIndirectBuffer(), 
+                            0, 
+                            static_cast<uint32_t>(sceneManager.getMeshInstanceCount()), 
+                            sizeof(VkDrawIndexedIndirectCommand)
+                        );
                     }
                 });
             }
@@ -967,28 +1064,29 @@ int main() {
                     vkCmdBindVertexBuffers(cb, 0, 1, &vBuffer, offsets);
                     vkCmdBindIndexBuffer(cb, model->indexBuffer->getHandle(), 0, VK_INDEX_TYPE_UINT32);
 
-                    VkDescriptorSet currentGlobalSet = context.getDescriptorManager().getDescriptorSet();
-                    for (const auto& mesh : model->meshes) {
-                        for (const auto& primitive : mesh.primitives) {
-                            struct PushConstants {
-                                glm::mat4 model;
-                                uint32_t sceneDataIndex;
-                                uint32_t materialIndex;
-                                uint32_t materialBufferIndex;
-                                uint32_t padding;
-                            } pc;
-                            
-                            pc.model = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)); // Scale down the helmet
-                            pc.sceneDataIndex = sceneManager.getSceneBufferIndex();
-                            pc.materialIndex = primitive.materialIndex;
-                            pc.materialBufferIndex = sceneManager.getMaterialBufferIndex();
-                            pc.padding = 0;
+                    struct PushConstants {
+                        uint32_t sceneDataIndex;
+                        uint32_t instanceBufferIndex;
+                        uint32_t materialBufferIndex;
+                        uint32_t padding;
+                    } pc;
+                    
+                    pc.sceneDataIndex = sceneManager.getSceneBufferIndex();
+                    pc.instanceBufferIndex = sceneManager.getMeshInstanceBufferIndex();
+                    pc.materialBufferIndex = sceneManager.getMaterialBufferIndex();
+                    pc.padding = 0;
     
-                            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &currentGlobalSet, 0, nullptr);
-                            vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
-                            vkCmdDrawIndexed(cb, primitive.indexCount, 1, primitive.firstIndex, 0, 0);
-                        }
-                    }
+                    VkDescriptorSet currentGlobalSet = context.getDescriptorManager().getDescriptorSet();
+                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &currentGlobalSet, 0, nullptr);
+                    vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
+                    
+                    vkCmdDrawIndexedIndirect(
+                        cb, 
+                        sceneManager.getIndirectBuffer(), 
+                        0, 
+                        static_cast<uint32_t>(sceneManager.getMeshInstanceCount()), 
+                        sizeof(VkDrawIndexedIndirectCommand)
+                    );
                 }
             });
 

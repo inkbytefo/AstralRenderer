@@ -295,9 +295,18 @@ std::unique_ptr<Model> GltfLoader::loadFromFile(const std::filesystem::path& pat
             if (posAttr != gltfPrimitive.attributes.end()) {
                 auto& accessor = asset.accessors[posAttr->accessorIndex];
                 vertices.resize(vertexStart + accessor.count);
+                
+                glm::vec3 minPos(std::numeric_limits<float>::max());
+                glm::vec3 maxPos(std::numeric_limits<float>::lowest());
+
                 fastgltf::iterateAccessorWithIndex<glm::vec3>(asset, accessor, [&](glm::vec3 pos, size_t idx) {
                     vertices[vertexStart + idx].position = pos;
+                    minPos = glm::min(minPos, pos);
+                    maxPos = glm::max(maxPos, pos);
                 });
+
+                primitive.boundingCenter = (minPos + maxPos) * 0.5f;
+                primitive.boundingRadius = glm::distance(maxPos, primitive.boundingCenter);
             }
 
             // NORMAL

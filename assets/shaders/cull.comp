@@ -1,0 +1,97 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : enable
+
+layout(local_size_x = 64) in;
+
+struct MeshInstance {
+    mat4 transform;
+    vec3 sphereCenter;
+    float sphereRadius;
+    uint materialIndex;
+    uint padding[3];
+};
+
+struct IndirectCommand {
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int  vertexOffset;
+    uint firstInstance;
+};
+
+struct SceneData {
+    mat4 view;
+    mat4 proj;
+    mat4 viewProj;
+    mat4 invView;
+    mat4 invProj;
+    mat4 lightSpaceMatrix;
+    mat4 cascadeViewProj[4];
+    vec4 frustumPlanes[6];
+    vec4 cascadeSplits;
+    vec4 cameraPos;
+    int lightCount;
+    int irradianceIndex;
+    int prefilteredIndex;
+    int brdfLutIndex;
+    int shadowMapIndex;
+    int lightBufferIndex;
+    int headlampEnabled;
+    int visualizeCascades;
+    float shadowBias;
+    float shadowNormalBias;
+    int pcfRange;
+    float csmLambda;
+};
+
+layout(std430, set = 0, binding = 1) readonly buffer SceneBuffer {
+    SceneData scene;
+} allSceneBuffers[];
+
+layout(std430, set = 0, binding = 1) readonly buffer InstanceBuffer {
+    MeshInstance instances[];
+} allInstanceBuffers[];
+
+layout(std430, set = 0, binding = 1) buffer IndirectBuffer {
+    IndirectCommand commands[];
+} allIndirectBuffers[];
+
+layout(push_constant) uniform PushConstants {
+    uint sceneDataIndex;
+    uint instanceBufferIndex;
+    uint indirectBufferIndex;
+    uint instanceCount;
+} pc;
+
+bool isVisible(vec4 planes[6], vec3 center, float radius) {
+    for (int i = 0; i < 6; i++) {
+        if (dot(planes[i], vec4(center, 1.0)) < -radius) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void main() {
+    uint gID = gl_GlobalInvocationID.x;
+    if (gID >= pc.instanceCount) return;
+
+    SceneData scene = allSceneBuffers[pc.sceneDataIndex].scene;
+    MeshInstance instance = allInstanceBuffers[pc.instanceBufferIndex].instances[gID];
+    
+    // Transform sphere center to world space
+    vec3 center = (instance.transform * vec4(instance.sphereCenter, 1.0)).xyz;
+    
+    // Apply scale to radius (approximate using max scale component)
+    vec3 scale = vec3(
+        length(instance.transform[0].xyz),
+        length(instance.transform[1].xyz),
+        length(instance.transform[2].xyz)
+    );
+    float radius = instance.sphereRadius * max(max(scale.x, scale.y), scale.z);
+
+    bool visible = isVisible(scene.frustumPlanes, center, radius);
+
+    // Update indirect command instance count
+    allIndirectBuffers[pc.indirectBufferIndex].commands[gID].instanceCount = visible ? 1 : 0;
+}

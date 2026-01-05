@@ -20,6 +20,7 @@ struct SceneData {
     mat4 invProj;
     mat4 lightSpaceMatrix;
     mat4 cascadeViewProj[4];
+    vec4 frustumPlanes[6];
     vec4 cascadeSplits;
     vec4 cameraPos;
     int lightCount;

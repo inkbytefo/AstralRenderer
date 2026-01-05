@@ -187,8 +187,8 @@ uint32_t DescriptorManager::registerStorageImage(VkImageView view) {
 }
 
 uint32_t DescriptorManager::registerBuffer(VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range, uint32_t binding) {
-    if (binding >= 5) {
-        throw std::runtime_error("Invalid binding index for registerBuffer!");
+    if (binding == 0 || binding > 3) {
+        throw std::runtime_error("Invalid binding index for registerBuffer! (Expected 1, 2, or 3)");
     }
     
     if (m_nextBufferIndices[binding] >= MAX_BINDLESS_BUFFERS) {
