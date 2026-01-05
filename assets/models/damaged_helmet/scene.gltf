@@ -1,0 +1,311 @@
+{
+  "accessors": [
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 13545,
+      "max": [
+        66.57549285888672,
+        67.21989440917969,
+        130.69244384765625
+      ],
+      "min": [
+        -81.51319885253906,
+        -96.74365234375,
+        -20.418365478515625
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 162540,
+      "componentType": 5126,
+      "count": 13545,
+      "max": [
+        0.9999675154685974,
+        0.9995570182800293,
+        1.0
+      ],
+      "min": [
+        -0.9999998211860657,
+        -0.999921441078186,
+        -1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 13545,
+      "max": [
+        1.0,
+        0.9999995231628418,
+        0.999996542930603,
+        1.0
+      ],
+      "min": [
+        -1.0,
+        -0.9999639987945557,
+        -0.9999878406524658,
+        -1.0
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 13545,
+      "max": [
+        0.9975835084915161,
+        0.9963520169258118
+      ],
+      "min": [
+        0.004047333728522062,
+        0.005394735373556614
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 53625,
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "extras": {
+      "author": "olmopotums (https://sketchfab.com/olmopotums)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/combat-vehicle-crewman-cvc-helmet-vietnam-era-c1516dc3d0ea420b9246334a94e5681e",
+      "title": "Combat Vehicle Crewman (CVC) Helmet, Vietnam Era"
+    },
+    "generator": "Sketchfab-12.66.0",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 214500,
+      "name": "floatBufferViews",
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 108360,
+      "byteOffset": 214500,
+      "byteStride": 8,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 325080,
+      "byteOffset": 322860,
+      "byteStride": 12,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 216720,
+      "byteOffset": 647940,
+      "byteStride": 16,
+      "name": "floatBufferViews",
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 864660,
+      "uri": "scene.bin"
+    }
+  ],
+  "images": [
+    {
+      "uri": "textures/NormalTest_01_baseColor.png"
+    },
+    {
+      "uri": "textures/NormalTest_01_metallicRoughness.png"
+    },
+    {
+      "uri": "textures/NormalTest_01_normal.png"
+    }
+  ],
+  "materials": [
+    {
+      "doubleSided": true,
+      "name": "NormalTest_01",
+      "normalTexture": {
+        "index": 2
+      },
+      "occlusionTexture": {
+        "index": 1
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 1
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "LO_Helmet_Assembled_NormalTest_01_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TANGENT": 2,
+            "TEXCOORD_0": 3
+          },
+          "indices": 4,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "matrix": [
+        -1.0,
+        2.220446049250313e-16,
+        4.930380657631324e-32,
+        0.0,
+        0.0,
+        2.220446049250313e-16,
+        -1.0,
+        0.0,
+        -2.220446049250313e-16,
+        -1.0,
+        -2.220446049250313e-16,
+        0.0,
+        -22.32953453063965,
+        -170.10757446289063,
+        -3.7771469166367894e-14,
+        1.0
+      ],
+      "name": "Sketchfab_model"
+    },
+    {
+      "children": [
+        2
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "3d2af532c6ce4c4f82bbc749ed443375.fbx"
+    },
+    {
+      "children": [
+        3
+      ],
+      "name": "RootNode"
+    },
+    {
+      "children": [
+        4
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.996194700054507,
+        0.08715572031318845,
+        0.0,
+        0.0,
+        -0.08715572031318845,
+        0.996194700054507,
+        0.0,
+        -3.6959569454193115,
+        -2.8130075931549072,
+        114.22456359863281,
+        1.0
+      ],
+      "name": "LO_Helmet_Assembled"
+    },
+    {
+      "children": [
+        5
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -7.450580683892992e-09,
+        0.0,
+        -0.0,
+        7.450580683892992e-09,
+        1.0,
+        0.0,
+        0.0,
+        -1.15116739273071,
+        -83.0274276733398,
+        1.0
+      ],
+      "name": "Object_4"
+    },
+    {
+      "mesh": 0,
+      "name": "LO_Helmet_Assembled_NormalTest_01_0"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Sketchfab_Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ]
+}

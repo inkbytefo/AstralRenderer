@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/glfw-populate"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/21d3789390e2f44d39a46d48b736238c/glfw-populate.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/56177232abc8b722b28f3c18482d0c76/glfw-populate-complete.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-build.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-configure.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-download.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-install.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-mkdir.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-patch.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-test.rule"
+		},
+		{
+			"file" : "C:/Users/tpoyr/Documents/trae_projects/Astral_Renderer/build/_deps/glfw-subbuild/CMakeFiles/d943772b39d17349e9c19e53f451067b/glfw-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"glfw-populate"
+		],
+		"name" : "glfw-populate"
+	}
+}
